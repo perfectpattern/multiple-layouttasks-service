@@ -1,0 +1,14 @@
+Testumgebung: Windows mit laufendem Docker Desktop
+Im Stammverzeichnis des Projektes PowerShell öffnen:
+
+-t steht für tag, . bezieht sich auf Dockerfile im selben Verzeichnis
+> docker build -t test:v1 .
+
+-p steht für Port und leitet hier 8080 auf 9999 um, wichtig: den tag von vorher verwenden
+> docker run -p 9999:8080 test:v1
+
+zum Testen dann beispielsweise
+> docker ps
+
+oder, falls schon möglich, im Browser z.B. 
+http://127.0.0.1:9999/version
