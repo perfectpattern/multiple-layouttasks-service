@@ -1,48 +1,100 @@
 const fs = require('fs');
+const job = require('./job');
 const path = require('path');
 const express = require('express');
-const request = require('request');
 const app = express();
+const expressWs = require('express-ws')(app);
+const axios = require('axios');
 const bodyParser = require('body-parser');
 const bodyParserError = require('bodyparser-json-error');
 const version = require('./version');
+const PORT = process.env.PORT || 4203;
 
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 app.use(bodyParserError.beautify({ status: 500, res: { msg: 'You sent a bad JSON !' } }));// Beautify body parser json syntax error
 
-var flowLocation = 'http://localhost:1881';
-//console.log(process.env);
+var baseUrl = 'https://' + process.env.SPO_URL + '/';
+var timeout = 5000;
+var authorization = 'Basic ' + Buffer.from(process.env.SPO_USER + ':' + process.env.SPO_PASSWORD).toString('base64');
+var xtenant = process.env.SPO_TENANT;
+
+const axiosSPO = axios.create({
+    baseURL: baseUrl,
+    timeout: timeout,
+    headers: {
+        "X-Tenant" : xtenant,
+        "accept" : "application/json",
+        "Authorization": authorization
+    }
+});
+
+
 
 //GET the version
 app.get('/version', (req, res) => {
     res.status(200).send(version.getVersion());
 });
 
-//GET credentials
-app.get('/credentials', (req, res) => {
-    
-    var options = {
-        method: 'GET',
-        url: path.join(flowLocation + '/credentials'),
-        json: true,
-    }
-    
-    // execute request
-    request(options, (error, response, body) => {
-        if (error) {
-            res.status(400).send(error);
-        } 
-        console.log(body);
-        res.status(200).send(body);
+app.get('/port', (req, res) => {
+    res.status(200).send({port : PORT});
+});
+
+app.get('/jobInfos', (req, res) => {
+    res.status(200).send(job.getMeta());
+});
+
+//websocket
+app.ws('/', function(ws, req) {
+    //echo
+    ws.on('message', function(msg) {
+        ws.send(JSON.stringify({echo:msg}));
     });
 });
 
 //POST a json
-app.post('/', (req, res) => {
-    var data = req.body;
-    console.log(data);
-    return res.status(200).send("success")
+app.post('/job/:name', (req, res) => {
+    jobname = req.params.name;
+    data = req.body;
+    job.set(jobname, data);
+
+    //answer to all websocket clients
+    expressWs.getWss().clients.forEach(client => {
+        client.send(JSON.stringify({
+            "status" : "info",
+            "code" : 1,
+            "message" : "received job"
+        }));
+    });
+    return res.status(200).send("success");
+});
+
+app.get('/config', (req,res) => {
+    var data = {
+        "FLOW_LOCATION"     : process.env.FLOW_LOCATION,
+        "SPO_URL"           : process.env.SPO_URL,
+        "SPO_TENANT"        : process.env.SPO_TENANT,
+        "SPO_USER"          : process.env.SPO_USER
+    };
+    res.set("Content-Type", "application/json");
+    res.status(200).send(data);
+});
+
+app.get('/SPO/getWorkspaces', (req,res) => {
+    
+    axiosSPO({
+        url: 'api/rest/workspaces'
+    })
+    .then(response => {
+        //console.log(response);
+        res.set("Content-Type", "application/json");
+        res.status(200).send(response.data);
+    })
+    .catch(err => {
+        console.log(err);
+        res.set("Content-Type", "application/json");
+        res.status(err.response.status).send();
+    });
 });
 
 //GET UI
@@ -51,8 +103,9 @@ app.get('/*', (req, res) => {
     var root = './src/html/';
     var url = req.url;
     
-    if(url.substr(url.length - 5).indexOf(".") === -1){
-        url = path.join(url, "index.html");
+    //check if a file was asked for
+    if(url.substr(url.length - 5).indexOf(".") === -1){ //not a file
+        url = "index.html";
     }
     
     // set asset path
@@ -85,7 +138,7 @@ app.get('/*', (req, res) => {
     
     //asset not found: 404
     else {
-        assetPath = path.join(root, "404.html");
+        assetPath = path.join(root, "content/404.html");
         fs.readFile(assetPath, (err, data) => {
             if (err) throw err;
             res.set('Content-Type', contentType)
@@ -96,7 +149,6 @@ app.get('/*', (req, res) => {
 });
 
 // Listen to the App Engine-specified port, or 8080 otherwise
-const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}...`);
 });

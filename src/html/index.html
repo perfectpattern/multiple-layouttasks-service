@@ -1,38 +1,62 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Multiple LayoutTasks Service</title>
+		<title>Multiple Layouttasks Service</title>
 		<meta charset="utf-8"/>
-		<link rel="stylesheet" type="text/css" href="css/main.css">
-		<script src="js/jquery-3.4.1.min.js"></script>
-		<script src="js/main.js"></script>
-		<script src="js/util.js"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1">
+
+		<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&display=swap" rel="stylesheet">
+		<link rel="stylesheet" type="text/css" href="/css/MsgBar.css"/>
+		<link rel="stylesheet" type="text/css" href="/css/main.css"/>
+
+		<script src="/js/jquery-3.4.1.min.js"></script>
+		<script src="/js/util.js"></script>
+		<script src="/js/MsgBar.js"></script>
+		<script src="/js/locale.js"></script>
+		<script src="/js/initNavigation.js"></script>
+		<script src="/js/initHTML.js"></script>
+		<script src="/js/init.js"></script>
+		<script src="/js/Websocket.js"></script>
+		<script src="/js/Workspaces.js"></script>
 	</head>
 	<body>
+        <script>
+			var target, lan, msgBar, allowedLanguages, allowedTargets, websocket; //global variables
+			//run synch "init.js" to get 'language' and 'target'
+			init(); 
+			var targetHasOwnJS = ["config", "home", "services"].includes(target); //chek if target is included in list of targets with own JS
+		</script>
+		
+		<!-- HEADER AND NAVIGATION-->
+		<header></header>
 		<script>
-			function isValidLanguage(lan){
-				return (lan == "de" || lan == "en");
-			}
+			//Init navigation, async
+			$('header').load('/navigation.html', function(){
+				initNavigation($(this)); //run async "initNavigation.js"(independent of other loading processes)
+			});
+		</script>
 
-			var lan = null;
+		<!--MAIN SECTION-->
+		<section id="main">
+			<div id="page" class="page"></div>
+		</section>
+		<script>
+			//load and init content for 'target'
+			$('#page').load('/content/' + target + '.html', function(){
+				initHTML($(this)); //run synch "initHTML.js"
 
-			//check cookie for language
-			if(isValidLanguage(Cookie.Read("language")))
-				lan = Cookie.Read("language");
+				//get PIB Flow port and init Websocket connection to PIB Flow (async)
+				$.get('/port')
+				.done(port => {
+					websocket = new Websocket('ws://localhost:' + port.port);
 
-			//check browser language
-			if (lan == null){
-				var browserLan = (navigator.language || navigator.userLanguage).substr(0,2);
-				if(isValidLanguage(browserLan))
-					lan = browserLan;
-			}
+					//Websocket is initialized. Now load target custom javascript
+					if(targetHasOwnJS) $.get("/js/targetCustom/" + target + ".js")
+				});
+			});
+		</script>
 
-			//default, if still not decided
-			if (lan == null)
-            	lan = "en";
-			
-			//redirect
-           	window.location.href = "/" + lan;
-        </script>
+		<!--FOOTER-->
+		<footer>powered by <a href="https://www.perfectpattern.de" target="_blank">PerfectPattern</a></footer>
 	</body>
 </html>

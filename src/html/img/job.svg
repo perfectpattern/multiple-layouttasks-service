@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   height="512pt"
+   viewBox="-63 0 511 512"
+   width="512pt"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="job.svg"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)">
+  <metadata
+     id="metadata10">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="798"
+     inkscape:window-height="480"
+     id="namedview6"
+     showgrid="false"
+     inkscape:zoom="0.34570313"
+     inkscape:cx="341.33333"
+     inkscape:cy="341.33333"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg4" />
+  <path
+     d="m325.5 40h-75.425781c-8.257813-23.28125-30.5-40-56.574219-40s-48.316406 16.71875-56.574219 40h-76.425781c-33.085938 0-60 26.914062-60 60v352c0 33.085938 26.914062 60 60 60h265.0625c33.050781-.035156 59.9375-26.949219 59.9375-60v-352c0-33.085938-26.914062-60-60-60zm-152 40v-20c0-11.027344 8.972656-20 20-20s20 8.972656 20 20v20h40v39h-120v-39zm172 372c0 11.015625-8.964844 19.988281-19.957031 20h-265.042969c-11.027344 0-20-8.972656-20-20v-352c0-11.027344 8.972656-20 20-20h33v79h200v-79h32c11.027344 0 20 8.972656 20 20zm-75.792969-221.960938 29.582031 26.921876-128.089843 140.75-84.605469-81.835938 27.8125-28.75 54.964844 53.164062zm0 0"
+     id="path2"
+     style="fill:#ffffff" />
+</svg>
