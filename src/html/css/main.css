@@ -235,6 +235,7 @@ p.title{
 	background-color: var(--main-bg-color);
 	cursor: pointer;
 	user-select: none;
+	border-radius: 3px;
 }
 
 .button:before{
@@ -251,6 +252,12 @@ p.title{
 }
 .button:active:before{
 	background-color: rgba(0,0,0,0.1);
+}
+
+
+.button.small{
+	font-size: 0.7rem;
+	padding: 1px 12px;
 }
 
 #title-workspaces span{
@@ -272,3 +279,43 @@ footer{
 footer a{
 	color: white;
 }
+
+
+/*Checkbox as switch*/
+input.selected[type="checkbox"] {
+	display:none;
+  }
+  input.selected[type="checkbox"] + label {
+    width: 29px;
+    height: 15px;
+    border-radius: 30px;
+    border: 1px solid #ddd;
+    background-color: #EEE;
+    display: inline-block;
+    content: "";
+	margin-right: 5px;
+	float: right;
+	margin-top: 2px;
+    transition: background-color 0.5s linear;
+  }
+  input.selected[type="checkbox"] + label:hover {
+	cursor: pointer;
+  }
+  input.selected[type="checkbox"] + label::before {
+	width: 15px;
+	height: 15px;
+	border-radius: 30px;
+	background-color: #fff;
+	display: block;
+	content: "";
+	float: left;
+	margin-right: 5px;
+	transition: margin 0.1s linear;
+	box-shadow: 0px 0px 5px #aaa;
+  }
+  input.selected[type="checkbox"]:checked+label{
+	background-color:  var(--main-bg-color);
+  }
+  input.selected[type="checkbox"]:checked+label::before {
+	margin: 0 0 0 15px;
+  }
