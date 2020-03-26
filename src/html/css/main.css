@@ -227,6 +227,7 @@ p.title{
 }
 
 .button{
+	margin-left: 6px;
 	font-size: 0.8rem;
 	position: relative;
 	float: right;
@@ -259,6 +260,7 @@ p.title{
 	font-size: 0.7rem;
 	padding: 1px 12px;
 }
+
 
 #title-workspaces span{
 	color: #777;
@@ -319,3 +321,13 @@ input.selected[type="checkbox"] {
   input.selected[type="checkbox"]:checked+label::before {
 	margin: 0 0 0 15px;
   }
+
+#calcStatus{
+	float: right;
+    font-size: 0.8rem;
+    font-weight: bold;
+    line-height: 24px;
+    margin-right: 16px;
+}
+	#calcStatus.running{color: var(--main-bg-color)}
+	#calcStatus.canceled{color: #cc3d3d;}

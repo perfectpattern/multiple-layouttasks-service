@@ -18,11 +18,17 @@ function Workspaces(){
         data = [];
         $.get('/SPO/getWorkspaces')
         .then(response => {
-            response['workspaces-Root'].workspace.forEach(workspace => {
-                if(workspace.description.indexOf('{MLTS}') > -1) data.push(workspace);
+            //prepare data for MyDataTable
+            var wsData = [];
+            Object.keys(response.data).forEach(wsId => {
+                wsData.push({
+                    "id" : wsId, 
+                    "label" : response.data[wsId].label, 
+                    "selected" : response.data[wsId].selected,
+                    "status" : response.data[wsId].status
+                })
             });
-            updated = new Date().toLocaleString();
-            events.loaded(data, updated);
+            events.loaded(response, wsData);
         })
         .catch(err => {
             events.error(err);
@@ -36,6 +42,12 @@ function Workspaces(){
     //--------INTERFACE---------
     this.load = function(){
         load();
+    }
+
+    this.update = function(){
+        $.get('/SPO/updateWorkspaces')
+        .then(() => { load(); })
+        .catch(()=> { events.error(err); })
     }
 
     this.on = function(event, fct){

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Multiple Layouttasks Service</title>
+		<title>MLTS</title>
 		<meta charset="utf-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1">
 
@@ -26,6 +26,7 @@
 			var target, lan, msgBar, allowedLanguages, allowedTargets, websocket; //global variables
 			//run synch "init.js" to get 'language' and 'target'
 			init(); 
+			document.title = "MLTS - " + target;
 			var targetHasOwnJS = ["config", "home", "services"].includes(target); //chek if target is included in list of targets with own JS
 		</script>
 		

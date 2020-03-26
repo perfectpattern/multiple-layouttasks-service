@@ -14,7 +14,4 @@ function initHTML(parent){
             $(this).attr("href", newLink);
         }
     });
-
-    //set document title
-    document.title = "PIB Flow - " + parent.find('h1').html();
 }
