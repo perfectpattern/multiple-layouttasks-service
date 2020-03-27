@@ -213,6 +213,7 @@ div.pile{
 	padding: 20px;
 	border: solid 1px #ddd;
 	margin-bottom: 20px;
+	background-color: #f7f7f7;
 }
 
 div.pile.loading{border-color: rgb(155, 183, 209);}
@@ -237,6 +238,10 @@ p.title{
 	cursor: pointer;
 	user-select: none;
 	border-radius: 3px;
+}
+
+.button.inactive{
+	background-color: #d4d4d4;
 }
 
 .button:before{
@@ -326,8 +331,30 @@ input.selected[type="checkbox"] {
 	float: right;
     font-size: 0.8rem;
     font-weight: bold;
-    line-height: 24px;
+    line-height: 19px;
     margin-right: 16px;
+    border: solid 1px;
+    padding: 0 25px;
+    border-radius: 7px;
+    margin-top: 2px;
 }
-	#calcStatus.running{color: var(--main-bg-color)}
-	#calcStatus.canceled{color: #cc3d3d;}
+	#calcStatus.readyForCalculation{
+		color: var(--main-bg-color);
+		border-color: var(--main-bg-color);
+	}
+	#calcStatus.notReadyForCalculation{
+		color: #aaa;
+		border-color: #aaa;
+	}
+	#calcStatus.calculating{
+		color: rgb(79, 177, 84);
+		border-color: rgb(79, 177, 84);
+	}
+	#calcStatus.canceled{
+		color: #cc3d3d;
+		border-color: #cc3d3d;
+	}
+	#calcStatus.finished{
+		color: #3d80cc;
+		border-color: #3d80cc;
+	}

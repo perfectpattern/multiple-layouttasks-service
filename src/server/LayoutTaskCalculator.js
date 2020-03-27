@@ -36,7 +36,7 @@ var LayoutTaskCalculator = function(axiosSPOIn){
                     if(extractIdFromHref(msg[messageType].href) === layoutTaskId){
                         let state = msg[messageType].newState;
                         events.onprogress(workspaceId, state);
-                        if(state === "SUCCESS") events.onfinish(workspaceId, "finisehd", layoutTaskId);
+                        if(state === "SUCCESS") events.onfinish(workspaceId, "finished", layoutTaskId);
                         if(state === "CANCELED") events.oncanceled(workspaceId, "canceled", layoutTaskId);
                         if(state === "FAILED") events.onfailed(workspaceId, "failed", layoutTaskId);
                     }

@@ -28,6 +28,7 @@ div.MyDataTable-bodyWrapper{
     height: calc(100% - 33px);
     overflow-y: scroll;
     overflow-x: auto;
+    background-color: #f7f7f7;
 }
 
 table.MyDataTable-header, 

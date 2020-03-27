@@ -215,13 +215,17 @@ app.get('/config', (req,res) => {
 });
 
 app.get('/SPO/updateWorkspaces', (req,res) => {
-    workspaces.load()
-    .then(() => { 
-        res.status(200).send("success"); 
-    })
-    .catch(() => { 
-        res.status(400).send("error"); 
-    })
+    if(calculationInProgress){
+        res.status(400).send("Calculation in progress.");
+    }else{
+        workspaces.update()
+        .then(() => { 
+            res.status(200).send("success"); 
+        })
+        .catch(() => { 
+            res.status(400).send("error"); 
+        })
+    }
 });
 
 app.get('/SPO/getWorkspaces', (req,res) => {
@@ -231,11 +235,16 @@ app.get('/SPO/getWorkspaces', (req,res) => {
 
 app.post('/SPO/setWorkspace', (req, res) => {
     var body = req.body;
-    if(workspaces.hasId(body.id)){
-        workspaces.setSelected(body.id, body.selected == "true");
-        res.status(200).send("success");
-    }else{
+    if(calculationInProgress){
+        res.status(400).send("Calculation in progress.");
+    }
+    else if(!workspaces.hasId(body.id)){
         res.status(400).send("Id not found.");
+    }
+    else{
+        workspaces.setSelected(body.id, body.selected == "true");
+        sendWebsocketMsg("workspaceStatusUpdate");
+        res.status(200).send("success");
     }
 });
 

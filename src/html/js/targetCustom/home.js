@@ -9,8 +9,6 @@ var freezeUI = false;
 //--------EVENTS---------
 //Define target custom websocket events (websocket is already fully initialized)
 websocket.on("message", function(msg){
-    //console.log("WS-Msg: " + msg.message + ".");
-    //console.log(msg);
     switch(msg.code){
         case "websocketRegistered":
             //ping;
@@ -20,36 +18,39 @@ websocket.on("message", function(msg){
             getStatus();
             break;
 
-        case "jobReceived": //received job
+        case "jobReceived":
+            getStatus();
             getJobInfos();
             break;
 
-        case 2:  //started calculation
-            freezeUI = true;
-            break;
-            
         case "workspaceStatusUpdate":
+            getStatus();
             workspaces.load();
             break;    
 
         case "layoutTaskStatusUpdate":
+            getStatus();
             workspaces.load();
             break;    
 
         case "calculationStarted":
+            getStatus();
             workspaces.load();
             break;
 
         case "calculationCanceled":
             workspaces.load();
+            setUI("canceled");
             break; 
 
         case "calculationFailed":
             workspaces.load();
+            getStatus();
             break;           
 
         case "calculationFinished":
             workspaces.load();
+            setUI("finished");
             break;   
 
         default: 
@@ -79,46 +80,62 @@ workspaces.on("error", function(err){
 
 //----------BUTTONS--------
 $('#update').click(function(){
-    if(freezeUI === true){
-        alert(lan == "de" ? "Bitte Berechnung abwarten oder abbrechen." : "Please wait for completion of calculation or cancel.");
-        return;
-    }
-    workspaces.update();
+    workspaces.update().then(()=>{})
+    .catch((e)=>{alert(e.responseText);})
 });
 
 $('#start').click(function(){
-    $.get('/SPO/start').then(()=>{
-        freezeUI = true; 
-        setUI("running");
-    }).catch((e)=>{console.log(e);})
+    $.get('/SPO/start').then(()=>{})
+    .catch((e)=>{alert(e.responseText);})
 });
 
 $('#cancel').click(function(){
-    $.get('/SPO/cancel').then(()=>{
-        freezeUI = false;
-        setUI("canceled");
-    }).catch((e)=>{console.log(e);})
+    $.get('/SPO/cancel').then(()=>{})
+    .catch((e)=>{alert(e.responseText);})
 });
 
 //--------FUNCTIONS---------
+function setStatusClass(name){
+    $('#calcStatus').removeAttr("class").attr("class", name);
+}
+
 function setUI(status){
     switch(status){
-        case "ready":
-            $('#calcStatus').html().removeClass("running").removeClass("canceled").removeClass("ready");
+        case "readyForCalculation":
+            setStatusClass(status);
+            $('#calcStatus').html(lan == "de" ? "bereit" : "ready");
+            $('#cancel').addClass("inactive");
+            $('#start').removeClass("inactive");
             break;
 
-        case "running":
-            $('#calcStatus').html(lan == "de" ? "läuft..." : "running...").addClass("running").removeClass("canceled").removeClass("ready");
+        case "notReadyForCalculation":
+            setStatusClass(status);
+            $('#calcStatus').html(lan == "de" ? "warte auf Input" : "waiting for input");
+            $('#start').addClass("inactive");
+            $('#cancel').addClass("inactive");
+            break;
+
+        case "calculating":
+            setStatusClass(status);
+            $('#calcStatus').html(lan == "de" ? "berechnet..." : "calculating...");
+            $('#start').addClass("inactive");
+            $('#cancel').addClass("inactive");
             break;
 
         case "canceled":
-            $('#calcStatus').html(lan == "de" ? "abgebrochen." : "canceled.").addClass("canceled").removeClass("running").removeClass("ready");
-            setTimeout(function(){ setUI("ready") },1000);
+            setStatusClass(status);
+            $('#calcStatus').html(lan == "de" ? "abgebrochen" : "canceled");
+            $('#start').removeClass("inactive");
+            $('#cancel').addClass("inactive");
+            setTimeout(function(){ getStatus() },1000);
             break;
 
         case "finished":
-            $('#calcStatus').html(lan == "de" ? "abgebrochen." : "canceled.").removeClass("canceled").removeClass("running").removeClass("ready");
-            setTimeout(function(){ setUI("ready") },1000);            
+            setStatusClass(status);
+            $('#calcStatus').html(lan == "de" ? "fertig" : "finished");
+            $('#start').removeClass("inactive");
+            $('#cancel').addClass("inactive");
+            setTimeout(function(){ getStatus() },1000);       
             break;
     }
 }
@@ -155,7 +172,7 @@ function getJobInfos(){
 function getStatus(){
     $.get('/status')
     .then(status => {
-        console.log(status);
+        setUI(status.status);
     })
     .catch(err => {
         console.log(err);
@@ -196,19 +213,12 @@ myDataTable_workspaces = new MyDataTable(
                 td.append(checkbox);
                 
                 checkbox.change(function(event) {
-                    if(freezeUI === true){
-                        
+                    $.post( "/SPO/setWorkspace", { id: this.id, selected: this.checked })
+                    .done(function( response ) {})
+                    .fail(function(err){
                         $(this).prop('checked', !$(this).prop('checked'));
                         event.preventDefault();
-                        alert(lan == "de" ? "Bitte Berechnung abwarten oder abbrechen." : "Please wait for completion of calculation or cancel.");
-                        return false;
-                    }
-                    $.post( "/SPO/setWorkspace", { id: this.id, selected: this.checked })
-                    .done(function( response ) {
-                        
-                    })
-                    .fail(function(err){
-                        console.log(err);
+                        alert(err.responseText);
                     });
                 });
             }
@@ -228,7 +238,7 @@ myDataTable_workspaces = new MyDataTable(
         minWidth : "400px",
         sorting : {
             colIndex : 0,
-            ascending : false
+            ascending : true
         },
         selectable : false
     }

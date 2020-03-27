@@ -45,9 +45,17 @@ function Workspaces(){
     }
 
     this.update = function(){
-        $.get('/SPO/updateWorkspaces')
-        .then(() => { load(); })
-        .catch(()=> { events.error(err); })
+        return new Promise(function(resolve, reject){
+            $.get('/SPO/updateWorkspaces')
+            .then(() => { 
+                load();
+                resolve();
+            })
+            .catch((err)=> { 
+                events.error(err); 
+                reject(err.responseText);
+            })
+        });
     }
 
     this.on = function(event, fct){
