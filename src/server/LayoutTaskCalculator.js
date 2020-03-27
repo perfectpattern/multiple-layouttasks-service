@@ -11,7 +11,8 @@ var LayoutTaskCalculator = function(axiosSPOIn){
         "onstart" : function(){return false;},
         "onprogress" : function(){return false;},
         "onfinish" : function(){return false;},
-        "onerror" : function(){return false;}
+        "oncanceled" : function(){return false;},
+        "onfailed" : function(){return false;}
     }    
 
     //----------FUNCTIONS---------
@@ -35,7 +36,9 @@ var LayoutTaskCalculator = function(axiosSPOIn){
                     if(extractIdFromHref(msg[messageType].href) === layoutTaskId){
                         let state = msg[messageType].newState;
                         events.onprogress(workspaceId, state);
-                        if(state === "SUCCESS") events.onfinish();
+                        if(state === "SUCCESS") events.onfinish(workspaceId, "finisehd", layoutTaskId);
+                        if(state === "CANCELED") events.oncanceled(workspaceId, "canceled", layoutTaskId);
+                        if(state === "FAILED") events.onfailed(workspaceId, "failed", layoutTaskId);
                     }
                     break;
 
@@ -46,7 +49,7 @@ var LayoutTaskCalculator = function(axiosSPOIn){
                     break;
 
                 default:
-                    console.error("Unknown spo websocket message type '" + messageType + "'");
+                    console.error("Unknown SPO websocket message type '" + messageType + "'");
                     break;
             }
 
@@ -94,6 +97,43 @@ var LayoutTaskCalculator = function(axiosSPOIn){
         };
 
         calculateLayoutTask(layoutTask, workspaceId);
+    }
+
+    this.cancel = function(){
+        var layoutTask = {
+            "layoutTasks-Root" : {
+                "layoutTask" : {
+                    "id" : layoutTaskId,
+                    "state" : "CANCELED"
+                }
+            }
+        };
+        //start calculation
+        axiosSPO({
+            method: 'PUT',
+            url: 'api/rest/workspaces/id=' + workspaceId + '/layoutTasks/ids=' + layoutTaskId,
+            data: layoutTask
+        })
+        .then(() => {
+            console.log("Layout Task " + layoutTaskId + " was canceled.");
+        })
+        .catch(err=> {
+            console.log("Layout Task " + layoutTaskId + " could not be canceled.");
+        })        
+    }
+
+    this.getError = function(layoutTaskId){
+        axiosSPO({
+            method: 'GET',
+            url: 'api/rest/workspaces/id=' + workspaceId + '/layoutTasks/id=' + layoutTaskId,
+        })
+        .then((response) => {
+            console.log("TODO: get Error from LT");
+            console.log(response);
+        })
+        .catch(err=> {
+           
+        })      
     }
 
     this.on = function(event, fct){

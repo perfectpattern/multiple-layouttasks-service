@@ -12,11 +12,15 @@ websocket.on("message", function(msg){
     //console.log("WS-Msg: " + msg.message + ".");
     //console.log(msg);
     switch(msg.code){
-        case 0:
+        case "websocketRegistered":
             //ping;
             break;
 
-        case 1: //received job
+        case "statusChanged": 
+            getStatus();
+            break;
+
+        case "jobReceived": //received job
             getJobInfos();
             break;
 
@@ -24,20 +28,29 @@ websocket.on("message", function(msg){
             freezeUI = true;
             break;
             
-        case 3: //calculation job status update
+        case "workspaceStatusUpdate":
             workspaces.load();
             break;    
 
-        case 4: //calculation canceled
+        case "layoutTaskStatusUpdate":
+            workspaces.load();
+            break;    
+
+        case "calculationStarted":
+            workspaces.load();
+            break;
+
+        case "calculationCanceled":
             workspaces.load();
             break; 
 
-        case 5: //calculation failed
-            break;
-
-        case 6: //calculation finished
+        case "calculationFailed":
             workspaces.load();
-            break;             
+            break;           
+
+        case "calculationFinished":
+            workspaces.load();
+            break;   
 
         default: 
             break;
@@ -52,7 +65,7 @@ workspaces.on("loaded", function(response, wsData){
     if(spoerror === true) msgBar.hide();
     spoerror = false;
     freezeUI = response.calcInProgress;
-    $('#title-workspaces span').html("[" + (lan== "de" ? "aktualisiert" : "updated") + ": " + new Date(response.updated).toLocaleString() + "]");
+    $('#title-workspaces span').html("[" + (lan== "de" ? "aktualisiert" : "updated") + ": " + (response.updated == null ? "-" : new Date(response.updated).toLocaleString()) + "]");
     myDataTable_workspaces.setData(wsData);
 });
 
@@ -139,6 +152,16 @@ function getJobInfos(){
     });
 }
 
+function getStatus(){
+    $.get('/status')
+    .then(status => {
+        console.log(status);
+    })
+    .catch(err => {
+        console.log(err);
+    });
+}
+
 //--------START---------
 myDataTable_workspaces = new MyDataTable(
     $('#workspaces'), //parent wrapper element
@@ -212,5 +235,5 @@ myDataTable_workspaces = new MyDataTable(
 );
 
 getJobInfos(); //inital check, if a job was already received on page load
-
+getStatus();
 workspaces.load(); //load workspaces

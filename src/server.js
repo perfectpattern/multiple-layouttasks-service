@@ -1,5 +1,6 @@
 const Job = require('./server/Job');
 const LayoutTaskCalculator = require('./server/LayoutTaskCalculator');
+const Workspaces = require('./server/Workspaces');
 const deliverHTTP = require('./server/deliverHTTP');
 const express = require('express');
 const app = express();
@@ -31,83 +32,58 @@ const axiosSPO = axios.create({
 
 
 //-----------VARIABLES------------
-var job;
-var workspaces = {
-    calcInProgress : false,
-    updated : null,
-    data : {}
-};
+var job, workspaces, layoutTaskCalculator;
+var calculationCanceled = false;
+var currentlyCalculatedWorkspaceId = null;
+var calculationInProgress = false;
+
 
 //-----------FUNCTIONS------------
-function getWorkspaces(){
-    return new Promise(function(resolve, reject){
-        axiosSPO({
-            url: 'api/rest/workspaces'
-        })
-        .then(response => {
-            wsIds = [];
-
-            //update or add entry per valid workspace to 'workspaces'
-            response.data['workspaces-Root'].workspace.forEach(workspace => {
-
-                if(workspace.description.indexOf('{MLTS}') > -1){ //only add if fulfills criteria
-                    wsIds.push(workspace.id); //collect all active workspace ids
-                    if(workspaces.data.hasOwnProperty(workspace.id)){
-                        workspaces.data[workspace.id].label = workspace.label //only update label
-                    }
-
-                    else{
-                        workspaces.data[workspace.id] = {
-                            "label" : workspace.label,
-                            "selected" : false,
-                            "status" : "-"
-                        };
-                    }
-                }
-            });
-
-            //delete obsolete entries
-            Object.keys(workspaces.data).forEach(wsId => {
-                if(!wsIds.includes(wsId)) delete workspaces.data[wsId];
-            });
-
-            //reset updated
-            workspaces.updated = new Date().getTime();
-            resolve();
-        })
-
-        .catch(err => {
-            console.log(err);
-            reject();
-        });
-    })
+function getStatus(){
+    if(workspaces.isReadyForCalculation() === true && job.exists() === true){
+        if(calculationInProgress){
+            return "calculating"
+        }else{
+            return "readyForCalculation";
+        }
+    }else{
+        return "notReadyForCalculation";
+    }
 }
 
 function sendWebsocketMsg(code){
     var msg;
     switch(code){
-        case 1:
-            msg = {status : "info",  code : 1, message : "received job"};
+        case "statusChanged":
+            msg = {status : "info",  code : "statusChanged", message : "status changed"};
             break;
 
-        case 2:
-            msg = {status : "info",  code : 2, message : "calculation started"};
+        case "jobReceived":
+            msg = {status : "info",  code : "jobReceived", message : "received job"};
             break;
 
-        case 3: 
-            msg = {status : "info",  code : 3, message : "calculation job status update"};
+        case "workspaceStatusUpdate": 
+            msg = {status : "info",  code : "workspaceStatusUpdate", message : "workspace status update"};
             break;
 
-        case 4:
-            msg = {status : "info",  code : 4, message : "calculation canceled"};
+        case "layoutTaskStatusUpdate": 
+            msg = {status : "info",  code : "layoutTaskStatusUpdate", message : "layout task status update"};
             break;
 
-        case 5:
-            msg = {status : "info",  code : 5, message : "calculation failed"};
+        case "calculationStarted":
+            msg = {status : "info",  code : "calculationStarted", message : "calculation started"};
+            break;
+
+        case "calculationCanceled":
+            msg = {status : "info",  code : "calculationCanceled", message : "calculation canceled"};
+            break;
+
+        case "calculationFailed":
+            msg = {status : "info",  code : "calculationFailed", message : "calculation failed"};
             break;            
 
-        case 6:
-            msg = {status : "info",  code : 6, message : "calculation finished"};
+        case "calculationFinished":
+            msg = {status : "info",  code : "calculationFinished", message : "calculation finished"};
             break;                    
 
         default:
@@ -122,34 +98,54 @@ function sendWebsocketMsg(code){
 }
 
 function calculate(index){
-    var workspaceKeys = Object.keys(workspaces.data);
-
-    //calculation finished
-    if(index > workspaceKeys.length - 1){
-        //Calculation finished, Do something
-        workspaces.calcInProgress = false;
-        sendWebsocketMsg(6);
+    //calculation canceled: exit loop.
+    if(calculationCanceled === true){
+        workspaces.resetAllWaiting();
+        calculationCanceled = false;
         return;
     }
 
-    //calculatie this workspace index
-    var currentWorkspaceId = workspaceKeys[index];
-    var currentWorkspace = workspaces.data[currentWorkspaceId];
+    //all LTs calculation finished
+    if(index > workspaces.getIdList().length - 1){
+        //Calculation finished, Do something
+        calculationInProgress = false;
+        sendWebsocketMsg("calculationFinished");
+        return;
+    }
 
-    if(currentWorkspace.selected){
-        layoutTaskCalculator.on("progress", function(workspaceId, status){
-            workspaces.data[workspaceId].status = status;
-            sendWebsocketMsg(3);
+    //calculate this workspace index
+    currentlyCalculatedWorkspaceId = workspaces.getIdList()[index];
+
+    if(workspaces.isSelected(currentlyCalculatedWorkspaceId)){
+        layoutTaskCalculator.on("progress", function(workspaceId, progress, layoutTaskId){
+            workspaces.setStatus(workspaceId, progress);
+            sendWebsocketMsg("layoutTaskStatusUpdate");
         });
-        layoutTaskCalculator.on("finish", function(workspaceId, status){
+        layoutTaskCalculator.on("finish", function(workspaceId, status, layoutTaskId){
+            workspaces.setStatus(workspaceId, status);
+            //msg to PIB Flow
+            axios.post(process.env.FLOW_LOCATION + "/controller/layouttask/" + job.getName() + "/" + layoutTaskId + "/" + workspaceId)
+            .then(res=> {
+                workspaces.setStatus(workspaceId, "sent");
+                sendWebsocketMsg("layoutTaskStatusUpdate");
+            })
+            .catch(err => {console.log(err); })
             index = index + 1;
-            calculate(index);
+            calculate(index); //next layoutTask            
         });
-        layoutTaskCalculator.on("error", function(workspaceId, status){
-            workspaces.calcInProgress = false;
-            sendWebsocketMsg(5);
-        });                    
-        layoutTaskCalculator.calculate(job.getBinderySignatures, currentWorkspaceId);
+        layoutTaskCalculator.on("failed", function(workspaceId, status, layoutTaskId){
+            workspaces.setStatus(workspaceId, status);
+            sendWebsocketMsg("calculationFailed");
+            //TODO: Get the error!
+            index = index + 1;
+            calculate(index); //next layoutTask
+        });
+        layoutTaskCalculator.on("canceled", function(workspaceId, status){
+            calculationInProgress = false;
+            calculationCanceled = false; //reset the value since cancelation is now completed
+            sendWebsocketMsg("calculationCanceled");
+        });                   
+        layoutTaskCalculator.calculate(job.getBinderySignatures, currentlyCalculatedWorkspaceId);
     }
 
     //next workspace index
@@ -164,14 +160,16 @@ function calculate(index){
 
 //-----------START------------
 job = new Job();
-getWorkspaces();
+workspaces = new Workspaces(axiosSPO);
+workspaces.on("updated", function(){
+    sendWebsocketMsg("workspaceStatusUpdate");
+})
 layoutTaskCalculator = new LayoutTaskCalculator(axiosSPO);
 
 
 
 
 //-----------WEBSERVICE------------
-//GET the version
 app.get('/version', (req, res) => {
     res.status(200).send(version.getVersion());
 });
@@ -184,10 +182,15 @@ app.get('/jobInfos', (req, res) => {
     res.status(200).send(job.getMeta());
 });
 
+app.get('/status', (req, res) => {
+    res.set("Content-Type", "application/json");
+    res.status(200).send({status : getStatus()});
+});
+
 //websocket client registration
 app.ws('/', function(ws, req) {
     ws.on('message', function(msg) {
-        ws.send(JSON.stringify({status : "echo", code : 0, message : msg})); //echo
+        ws.send(JSON.stringify({status : "echo", code : "websocketRegistered", message : msg})); //echo
     });
 });
 
@@ -196,7 +199,7 @@ app.post('/job/:name', (req, res) => {
     jobname = req.params.name;
     data = req.body;
     job.set(jobname, data);
-    sendWebsocketMsg(1);
+    sendWebsocketMsg("jobReceived");
     return res.status(200).send("success");
 });
 
@@ -212,20 +215,24 @@ app.get('/config', (req,res) => {
 });
 
 app.get('/SPO/updateWorkspaces', (req,res) => {
-    getWorkspaces()
-    .then(() => { res.status(200).send("success"); })
-    .catch(() => { res.status(400).send("error"); })
+    workspaces.load()
+    .then(() => { 
+        res.status(200).send("success"); 
+    })
+    .catch(() => { 
+        res.status(400).send("error"); 
+    })
 });
 
 app.get('/SPO/getWorkspaces', (req,res) => {
     res.set("Content-Type", "application/json");
-    res.status(200).send(workspaces);
+    res.status(200).send(workspaces.getAllData());
 });
 
 app.post('/SPO/setWorkspace', (req, res) => {
     var body = req.body;
-    if(workspaces.data.hasOwnProperty(body.id)){
-        workspaces.data[body.id].selected = body.selected == "true";
+    if(workspaces.hasId(body.id)){
+        workspaces.setSelected(body.id, body.selected == "true");
         res.status(200).send("success");
     }else{
         res.status(400).send("Id not found.");
@@ -233,28 +240,39 @@ app.post('/SPO/setWorkspace', (req, res) => {
 });
 
 app.get('/SPO/start', (req, res) => {
-    workspaces.calcInProgress = true;
-    sendWebsocketMsg(2);
-    //set selected workspaces "pending"
-    for(var wsId in workspaces.data)
-        if(workspaces.data[wsId].selected) workspaces.data[wsId].status = "pending";
-    sendWebsocketMsg(3);
-    calculate(0);
-    res.status(200).send("success");
+    var status = getStatus();
+    if(calculationCanceled === true){ 
+        res.status(400).send("Cancelation not yet completed");
+    }
+    else if(status === "calculating"){ 
+        res.status(400).send("Already calculating"); 
+    }
+    else if(status === "notReadyForCalculation"){ 
+        res.status(400).send("Not ready yet"); 
+    }
+    else{
+        sendWebsocketMsg("calculationStarted");
+        calculationInProgress = true;
+        workspaces.setAllWaiting();
+        calculate(0);
+        res.status(200).send("success");
+    }
 });
 
 app.get('/SPO/cancel', (req, res) => {
-    sendWebsocketMsg(4);
-    for(var wsId in workspaces.data){
-        var workspace = workspaces.data[wsId];
-        if(workspace.status !== "-"){
-            workspace.status = "-";
-            sendWebsocketMsg(3);
-        }
+    if(calculationInProgress === false){
+        res.status(400).send("No calculation running");
+    }else if(calculationCanceled === true){
+        res.status(400).send("Already canceled");
     }
-    workspaces.calcInProgress = false;
-    res.status(200).send("success");
+    else{
+        calculationCanceled = true;
+        layoutTaskCalculator.cancel();
+        res.status(200).send("success");
+    }
 });
+
+
 
 //GET HTTP
 app.get('/*', (req, res) => {

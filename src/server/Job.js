@@ -12,6 +12,14 @@ var Job = function(){
         return meta;
     }
 
+    this.getName = function(){
+        return meta.jobname;
+    }
+
+    this.exists = function(){
+        return meta.entries > 0;
+    }
+
     this.getBinderySignatures = function(){
         return binderySignatures;
     }
