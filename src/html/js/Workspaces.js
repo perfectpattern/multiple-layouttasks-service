@@ -25,7 +25,8 @@ function Workspaces(){
                     "id" : wsId, 
                     "label" : response.data[wsId].label, 
                     "selected" : response.data[wsId].selected,
-                    "status" : response.data[wsId].status
+                    "status" : response.data[wsId].status,
+                    "errorMsg" : response.data[wsId].errorMsg
                 })
             });
             events.loaded(response, wsData);
@@ -51,9 +52,8 @@ function Workspaces(){
                 load();
                 resolve();
             })
-            .catch((err)=> { 
-                events.error(err); 
-                reject(err.responseText);
+            .catch((err)=> {  
+                reject(err);
             })
         });
     }

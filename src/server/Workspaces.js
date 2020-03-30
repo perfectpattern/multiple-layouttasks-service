@@ -29,7 +29,8 @@ var Workspaces = function(axiosSPO){
                             workspaces[workspaceIn.id] = {
                                 "label" : workspaceIn.label,
                                 "selected" : false,
-                                "status" : "-"
+                                "status" : "-",
+                                "errorMsg" : ""
                             };
                         }
                     }
@@ -101,8 +102,13 @@ var Workspaces = function(axiosSPO){
 
     this.setStatus = function(workspaceId, status){
         workspaces[workspaceId].status = status;
+        workspaces[workspaceId].errorMsg = "";
         events.onupdated();
     }    
+
+    this.setErrorMsg = function(workspaceId, errorMsg){
+        workspaces[workspaceId].errorMsg = errorMsg;
+    }
 
     this.hasId = function(workspaceId){
         return workspaces.hasOwnProperty(workspaceId);

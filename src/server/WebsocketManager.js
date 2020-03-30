@@ -39,7 +39,7 @@ var WebsocketManager = function() {
         
         websocket.onclose = function() {
             if(!closedOnPurpose){
-                console.error('Connection lost/refused, retry in ' + (manager.reconnectInterval / 1000) + ' seconds');
+                console.error('Connection lost/refused, retry in ' + (reconnectInterval / 1000) + ' seconds');
                 setTimeout(function() { connect(); }, reconnectInterval);
             }else{
                 console.log('WebSocket connection has been closed.');
@@ -48,7 +48,7 @@ var WebsocketManager = function() {
         };
 
         websocket.onerror = function(errorEvent) {
-            console.error('Error occured: ' + errorEvent);
+            console.error('Websocket error: ' + errorEvent.message);
             events.onerror();
         };
         

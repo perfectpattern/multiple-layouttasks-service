@@ -9,7 +9,7 @@ const axios = require('axios');
 const bodyParser = require('body-parser');
 const bodyParserError = require('bodyparser-json-error');
 const version = require('./server/version');
-const PORT = process.env.PORT || 4203;
+const PORT = process.env.PORT || 4201;
 
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
@@ -54,6 +54,14 @@ function getStatus(){
 function sendWebsocketMsg(code){
     var msg;
     switch(code){
+        case "PIBconnection":
+            msg = {status : "warning",  code : "PIBconnection", message : "connection to PIB Flow"};
+            break;
+
+        case "noPIBconnection":
+            msg = {status : "warning",  code : "noPIBconnection", message : "no connection to PIB Flow"};
+            break;
+
         case "statusChanged":
             msg = {status : "info",  code : "statusChanged", message : "status changed"};
             break;
@@ -97,6 +105,20 @@ function sendWebsocketMsg(code){
     });
 }
 
+function sendToPIBFlow(jobName, layoutTaskId, workspaceId){
+    //msg to PIB Flow
+    axios.post(process.env.FLOW_LOCATION + "/controller/layouttask/" + jobName + "/" + layoutTaskId + "/" + workspaceId)
+    .then(res=> {
+        workspaces.setStatus(workspaceId, "sent");
+        sendWebsocketMsg("layoutTaskStatusUpdate");
+    })
+    .catch(err => {
+        console.log(err); 
+        workspaces.setStatus(workspaceId, "not sent");
+        workspaces.setErrorMsg(workspaceId, "The LayoutTask could not be sent to PIB Flow! Please check connectionto PIB Flow.");
+    })
+}
+
 function calculate(index){
     //calculation canceled: exit loop.
     if(calculationCanceled === true){
@@ -123,29 +145,35 @@ function calculate(index){
         });
         layoutTaskCalculator.on("finish", function(workspaceId, status, layoutTaskId){
             workspaces.setStatus(workspaceId, status);
-            //msg to PIB Flow
-            axios.post(process.env.FLOW_LOCATION + "/controller/layouttask/" + job.getName() + "/" + layoutTaskId + "/" + workspaceId)
-            .then(res=> {
-                workspaces.setStatus(workspaceId, "sent");
-                sendWebsocketMsg("layoutTaskStatusUpdate");
-            })
-            .catch(err => {console.log(err); })
+            sendToPIBFlow(job.getName(), layoutTaskId, workspaceId);
             index = index + 1;
             calculate(index); //next layoutTask            
         });
         layoutTaskCalculator.on("failed", function(workspaceId, status, layoutTaskId){
-            workspaces.setStatus(workspaceId, status);
-            sendWebsocketMsg("calculationFailed");
-            //TODO: Get the error!
-            index = index + 1;
-            calculate(index); //next layoutTask
+            layoutTaskCalculator.getError(workspaceId, layoutTaskId)
+            .then(response => {
+                var errMsg = response.data["exceptionInfo-Root"].message;
+                workspaces.setStatus(workspaceId, status);
+                workspaces.setErrorMsg(workspaceId, errMsg);
+                sendWebsocketMsg("calculationFailed");
+                index = index + 1;
+                calculate(index); //next layoutTask
+            })
+            .catch(e => {
+                console.log(e);
+            });
         });
-        layoutTaskCalculator.on("canceled", function(workspaceId, status){
+        layoutTaskCalculator.on("canceled", function(workspaceId, status, layoutTaskId){
+            workspaces.setStatus(workspaceId, status);
             calculationInProgress = false;
             calculationCanceled = false; //reset the value since cancelation is now completed
             sendWebsocketMsg("calculationCanceled");
-        });                   
-        layoutTaskCalculator.calculate(job.getBinderySignatures, currentlyCalculatedWorkspaceId);
+        });     
+        layoutTaskCalculator.on("error", function(workspaceId, errMsg, layoutTaskId){     
+            workspaces.setStatus(workspaceId, "error");
+            workspaces.setErrorMsg(workspaceId, errMsg);
+        });
+        layoutTaskCalculator.calculate(job.getBinderySignatures(), currentlyCalculatedWorkspaceId);
     }
 
     //next workspace index
@@ -153,6 +181,17 @@ function calculate(index){
         index = index + 1;
         calculate(index);
     }
+}
+
+function checkPIBFLowConnection(){
+        //msg to PIB Flow
+        axios.get(process.env.FLOW_LOCATION + "/version")
+        .then(res=> {
+            sendWebsocketMsg("PIBconnection");
+        })
+        .catch(err=>{
+            sendWebsocketMsg("noPIBconnection");
+        });
 }
 
 
@@ -165,8 +204,8 @@ workspaces.on("updated", function(){
     sendWebsocketMsg("workspaceStatusUpdate");
 })
 layoutTaskCalculator = new LayoutTaskCalculator(axiosSPO);
-
-
+checkPIBFLowConnection();
+setInterval(checkPIBFLowConnection,5000);
 
 
 //-----------WEBSERVICE------------
@@ -216,7 +255,7 @@ app.get('/config', (req,res) => {
 
 app.get('/SPO/updateWorkspaces', (req,res) => {
     if(calculationInProgress){
-        res.status(400).send("Calculation in progress.");
+        res.status(400).send("Calculation in progress");
     }else{
         workspaces.update()
         .then(() => { 

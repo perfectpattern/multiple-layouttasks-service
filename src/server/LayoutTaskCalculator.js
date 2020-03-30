@@ -5,6 +5,7 @@ var LayoutTaskCalculator = function(axiosSPOIn){
     var axiosSPO = axiosSPOIn;
     var websocketManager;
     var workspaceId;
+    var canceled = false;
     var layoutTaskId; 
     var websocketConnection = false;
     var events = {
@@ -12,7 +13,8 @@ var LayoutTaskCalculator = function(axiosSPOIn){
         "onprogress" : function(){return false;},
         "onfinish" : function(){return false;},
         "oncanceled" : function(){return false;},
-        "onfailed" : function(){return false;}
+        "onfailed" : function(){return false;},
+        "onerror" : function(){return false;}
     }    
 
     //----------FUNCTIONS---------
@@ -24,6 +26,7 @@ var LayoutTaskCalculator = function(axiosSPOIn){
     function calculateLayoutTask(layoutTask){
         //prepare websocket events
         websocketManager.on("message", function(msg){
+            if(canceled) return;
             var messageType = Object.keys(msg)[0];
             switch(messageType){
                 case "resourceCreationNotification-Root":
@@ -37,8 +40,12 @@ var LayoutTaskCalculator = function(axiosSPOIn){
                         let state = msg[messageType].newState;
                         events.onprogress(workspaceId, state);
                         if(state === "SUCCESS") events.onfinish(workspaceId, "finished", layoutTaskId);
-                        if(state === "CANCELED") events.oncanceled(workspaceId, "canceled", layoutTaskId);
-                        if(state === "FAILED") events.onfailed(workspaceId, "failed", layoutTaskId);
+                        if(state === "FAILURE") events.onfailed(workspaceId, "failed", layoutTaskId);
+                        if(state === "CANCELED"){
+                            canceled = true;
+                            events.oncanceled(workspaceId, "canceled", layoutTaskId);
+                        }
+                        //if(state === "RUNNING") //nada
                     }
                     break;
 
@@ -46,6 +53,15 @@ var LayoutTaskCalculator = function(axiosSPOIn){
                     if(extractIdFromHref(msg[messageType].layoutTaskHref) === layoutTaskId){
                         events.onprogress(workspaceId, (msg[messageType].progress*100) + "%");
                     }            
+                    break;
+
+                case "resourceUpdateNotification-Root":
+                    if(extractIdFromHref(msg[messageType].href) === layoutTaskId){
+                        events.oncanceled(workspaceId, "canceled", layoutTaskId);
+                    }else{
+                        console.log("other resourceUpdateNotification LT ID:");
+                        console.log(msg);
+                    }
                     break;
 
                 default:
@@ -65,7 +81,7 @@ var LayoutTaskCalculator = function(axiosSPOIn){
             layoutTaskId = extractIdFromHref(res.headers.location); //extract LayoutTaskID
         })
         .catch(err=> {
-            console.log(err);
+            events.onerror(workspaceId, err.message, layoutTaskId);
         })
     }
 
@@ -82,6 +98,7 @@ var LayoutTaskCalculator = function(axiosSPOIn){
 
     //----------INTERFACE---------
     this.calculate = function(binderySignatures, workspaceIdIn){
+        canceled = false;
         workspaceId = workspaceIdIn;
 
         //create LayoutTask
@@ -115,29 +132,25 @@ var LayoutTaskCalculator = function(axiosSPOIn){
             data: layoutTask
         })
         .then(() => {
-            console.log("Layout Task " + layoutTaskId + " was canceled.");
         })
         .catch(err=> {
             console.log("Layout Task " + layoutTaskId + " could not be canceled.");
         })        
     }
 
-    this.getError = function(layoutTaskId){
-        axiosSPO({
-            method: 'GET',
-            url: 'api/rest/workspaces/id=' + workspaceId + '/layoutTasks/id=' + layoutTaskId,
-        })
-        .then((response) => {
-            console.log("TODO: get Error from LT");
-            console.log(response);
-        })
-        .catch(err=> {
-           
-        })      
+    this.getError = function(workspaceId, layoutTaskId){
+        return(
+                axiosSPO({
+                method: 'GET',
+                url: 'api/rest/workspaces/id=' + workspaceId + '/layoutTasks/id=' + layoutTaskId + '/exceptionInfo',
+            })  
+        );
     }
 
     this.on = function(event, fct){
-        events["on" + event] = fct;
+        var key = "on" + event;
+        if(!events.hasOwnProperty(key)) throw new Error("Wrong event key: " + event);
+        events[key] = fct;
     }
 }
 

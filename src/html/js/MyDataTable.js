@@ -355,7 +355,7 @@ function MyDataTable(
 
         //td is filled by custom, external function
         else{
-            columnConf.setContent(td);
+            columnConf.setContent(td, dataEntry);
         }
     }
 

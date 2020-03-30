@@ -9,52 +9,46 @@ var freezeUI = false;
 //--------EVENTS---------
 //Define target custom websocket events (websocket is already fully initialized)
 websocket.on("message", function(msg){
+    getStatus();
     switch(msg.code){
+        case "PIBconnection":
+            msgBar.clear("error");
+            break;
+
+        case "noPIBconnection":
+            msgBar.error("Keine Verbindung zu PIB Flow!");
+            break;
+
         case "websocketRegistered":
-            //ping;
             break;
 
         case "statusChanged": 
-            getStatus();
             break;
 
         case "jobReceived":
-            getStatus();
             getJobInfos();
+            setEvent("jobreceived");
             break;
 
-        case "workspaceStatusUpdate":
-            getStatus();
-            workspaces.load();
-            break;    
-
-        case "layoutTaskStatusUpdate":
-            getStatus();
-            workspaces.load();
-            break;    
-
         case "calculationStarted":
-            getStatus();
-            workspaces.load();
+            setEvent("started");
+            break;
+
+        case "calculationFailed":
+            setEvent("failed");
+            break;
+
+        case "calculationFinished":
+            setEvent("finished");
             break;
 
         case "calculationCanceled":
-            workspaces.load();
-            setUI("canceled");
-            break; 
+            setEvent("canceled");
+            break;            
 
-        case "calculationFailed":
+        default: //"layoutTaskStatusUpdate", "workspaceStatusUpdate"
             workspaces.load();
-            getStatus();
-            break;           
-
-        case "calculationFinished":
-            workspaces.load();
-            setUI("finished");
             break;   
-
-        default: 
-            break;
     }
 });
 
@@ -95,49 +89,66 @@ $('#cancel').click(function(){
 });
 
 //--------FUNCTIONS---------
-function setStatusClass(name){
-    $('#calcStatus').removeAttr("class").attr("class", name);
-}
-
 function setUI(status){
+
+    $('#calcStatus').removeAttr("class").attr("class", "tag " + status);
+
     switch(status){
         case "readyForCalculation":
-            setStatusClass(status);
             $('#calcStatus').html(lan == "de" ? "bereit" : "ready");
             $('#cancel').addClass("inactive");
+            $('#update').removeClass("inactive");
             $('#start').removeClass("inactive");
             break;
 
         case "notReadyForCalculation":
-            setStatusClass(status);
             $('#calcStatus').html(lan == "de" ? "warte auf Input" : "waiting for input");
             $('#start').addClass("inactive");
             $('#cancel').addClass("inactive");
+            $('#update').removeClass("inactive");
             break;
 
         case "calculating":
-            setStatusClass(status);
             $('#calcStatus').html(lan == "de" ? "berechnet..." : "calculating...");
             $('#start').addClass("inactive");
-            $('#cancel').addClass("inactive");
+            $('#cancel').removeClass("inactive");
+            $('#update').addClass("inactive");
             break;
 
-        case "canceled":
-            setStatusClass(status);
-            $('#calcStatus').html(lan == "de" ? "abgebrochen" : "canceled");
-            $('#start').removeClass("inactive");
-            $('#cancel').addClass("inactive");
-            setTimeout(function(){ getStatus() },1000);
-            break;
-
-        case "finished":
-            setStatusClass(status);
-            $('#calcStatus').html(lan == "de" ? "fertig" : "finished");
-            $('#start').removeClass("inactive");
-            $('#cancel').addClass("inactive");
-            setTimeout(function(){ getStatus() },1000);       
+        default:
+            console.log("Wrong status '" + status + "'!");
             break;
     }
+}
+
+function setEvent(event){
+    $('#calcEvent').removeAttr("class").attr("class", "tag " + event);
+    $('#calcEvent').show();
+    switch(event){
+        case "jobreceived":
+            $('#calcEvent').html(lan == "de" ? "Job empfangen" : "job received");
+            break;
+
+        case "started":
+            $('#calcEvent').html(lan == "de" ? "gestartet" : "started");
+            break;         
+
+        case "finished":
+            $('#calcEvent').html(lan == "de" ? "beendet" : "finished");
+            break;
+        
+        case "canceled":
+            $('#calcEvent').html(lan == "de" ? "abgebrochen" : "canceled");
+            break;
+
+        case "failed":
+            $('#calcEvent').html(lan == "de" ? "fehlgeschlagen" : "failed");
+            break;
+        
+        default:
+            break;
+    }
+    setTimeout(function(){$('#calcEvent').hide();}, 1500)
 }
 
 function setJob(meta){
@@ -225,11 +236,28 @@ myDataTable_workspaces = new MyDataTable(
         },
         {
             label : (lan == "de" ? "Berechnung" : "Calculation"),
-            key : 'status',
+            key : null,
             type: "STRING",
             sortAs : "STRING",
             align : "right",
-            initWidth : "25%"
+            initWidth : "25%",
+            setContent : function(td, dataEntry){
+                console.log(dataEntry);
+                switch(dataEntry.status){
+                    case "failed": case "not sent": case "error":
+                        var span = $('<span class="clickable failed">' + dataEntry.status + '</span>');
+                        td.append(span);
+                        span.attr("errMsg", dataEntry.errorMsg);
+                        span.click(function(){
+                            alert($(this).attr("errMsg"));
+                        })
+                        break;
+
+                    default:
+                        td.html(dataEntry.status);
+                        break;
+                }
+            }
         }                                  
     ],
     {
@@ -245,5 +273,5 @@ myDataTable_workspaces = new MyDataTable(
 );
 
 getJobInfos(); //inital check, if a job was already received on page load
-getStatus();
 workspaces.load(); //load workspaces
+getStatus();

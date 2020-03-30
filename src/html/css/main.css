@@ -327,7 +327,7 @@ input.selected[type="checkbox"] {
 	margin: 0 0 0 15px;
   }
 
-#calcStatus{
+.tag{
 	float: right;
     font-size: 0.8rem;
     font-weight: bold;
@@ -335,26 +335,37 @@ input.selected[type="checkbox"] {
     margin-right: 16px;
     border: solid 1px;
     padding: 0 25px;
-    border-radius: 7px;
+    border-radius: 5px;
     margin-top: 2px;
 }
-	#calcStatus.readyForCalculation{
+
+
+	.tag.readyForCalculation{
 		color: var(--main-bg-color);
 		border-color: var(--main-bg-color);
 	}
-	#calcStatus.notReadyForCalculation{
+	.tag.notReadyForCalculation{
 		color: #aaa;
 		border-color: #aaa;
 	}
-	#calcStatus.calculating{
+	.tag.calculating{
 		color: rgb(79, 177, 84);
 		border-color: rgb(79, 177, 84);
 	}
-	#calcStatus.canceled{
+	.tag.canceled, .tag.failed{
 		color: #cc3d3d;
 		border-color: #cc3d3d;
 	}
-	#calcStatus.finished{
+	.tag.finished, .tag.started, .tag.jobreceived, .tag.updated{
 		color: #3d80cc;
 		border-color: #3d80cc;
 	}
+
+span.clickable{
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+span.clickable.failed{
+	color: #cc3d3d;
+}
