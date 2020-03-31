@@ -1,6 +1,6 @@
 {
   "name": "multiple-layouttasks-service",
-  "version": "0.0.1-dev",
+  "version": "1.0.0",
   "description": "Multiple LayoutTasks Service posts received BinderySignatures to available Workspaces to trigger LayoutTasks.",
   "main": "src/server.js",
   "scripts": {

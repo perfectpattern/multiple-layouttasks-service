@@ -31,11 +31,13 @@ const axiosSPO = axios.create({
 });
 
 
+
 //-----------VARIABLES------------
 var job, workspaces, layoutTaskCalculator;
 var calculationCanceled = false;
 var currentlyCalculatedWorkspaceId = null;
 var calculationInProgress = false;
+
 
 
 //-----------FUNCTIONS------------
@@ -55,7 +57,7 @@ function sendWebsocketMsg(code){
     var msg;
     switch(code){
         case "PIBconnection":
-            msg = {status : "warning",  code : "PIBconnection", message : "connection to PIB Flow"};
+            msg = {status : "info",  code : "PIBconnection", message : "connection to PIB Flow"};
             break;
 
         case "noPIBconnection":
@@ -184,28 +186,29 @@ function calculate(index){
 }
 
 function checkPIBFLowConnection(){
-        //msg to PIB Flow
-        axios.get(process.env.FLOW_LOCATION + "/version")
-        .then(res=> {
-            sendWebsocketMsg("PIBconnection");
-        })
-        .catch(err=>{
-            sendWebsocketMsg("noPIBconnection");
-        });
+    //msg to PIB Flow
+    axios.get(process.env.FLOW_LOCATION + "/version")
+    .then(res=> {
+        sendWebsocketMsg("PIBconnection");
+    })
+    .catch(err=>{
+        sendWebsocketMsg("noPIBconnection");
+    });
 }
 
-
-
+function init(){
+    job = new Job();
+    workspaces = new Workspaces(axiosSPO);
+    workspaces.on("updated", function(){
+        sendWebsocketMsg("workspaceStatusUpdate");
+    })
+    layoutTaskCalculator = new LayoutTaskCalculator(axiosSPO);
+    checkPIBFLowConnection();
+    setInterval(checkPIBFLowConnection,5000);
+}
 
 //-----------START------------
-job = new Job();
-workspaces = new Workspaces(axiosSPO);
-workspaces.on("updated", function(){
-    sendWebsocketMsg("workspaceStatusUpdate");
-})
-layoutTaskCalculator = new LayoutTaskCalculator(axiosSPO);
-checkPIBFLowConnection();
-setInterval(checkPIBFLowConnection,5000);
+init();
 
 
 //-----------WEBSERVICE------------
@@ -251,6 +254,14 @@ app.get('/config', (req,res) => {
     };
     res.set("Content-Type", "application/json");
     res.status(200).send(data);
+});
+
+app.get('/reset', (req, res) => {
+    calculationCanceled = false;
+    currentlyCalculatedWorkspaceId = null;
+    calculationInProgress = false;
+    init();
+    res.status(200).send("success");
 });
 
 app.get('/SPO/updateWorkspaces', (req,res) => {
@@ -319,8 +330,6 @@ app.get('/SPO/cancel', (req, res) => {
         res.status(200).send("success");
     }
 });
-
-
 
 //GET HTTP
 app.get('/*', (req, res) => {

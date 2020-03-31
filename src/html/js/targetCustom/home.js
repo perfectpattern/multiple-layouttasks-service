@@ -88,6 +88,20 @@ $('#cancel').click(function(){
     .catch((e)=>{alert(e.responseText);})
 });
 
+$('#reset').click(function(){
+    if(confirm("Wirklich alles komplett zurücksetzen?")){
+        $.get('/reset').then(()=>{})
+        .then(()=>{
+            getStatus();
+            getJobInfos();
+            workspaces.load();
+        })
+        .catch((e)=>{
+            alert(e.responseText);
+        })
+    }
+});
+
 //--------FUNCTIONS---------
 function setUI(status){
 
@@ -148,7 +162,7 @@ function setEvent(event){
         default:
             break;
     }
-    setTimeout(function(){$('#calcEvent').hide();}, 1500)
+    setTimeout(function(){$('#calcEvent').hide();}, 3000)
 }
 
 function setJob(meta){
@@ -165,7 +179,7 @@ function setJob(meta){
     }
     
     else{
-        $('#job').append('<p class="title">' + (lan == "de" ? "Kein Job empfangen." : "No job received.") + '</p>');
+        $('#job').html('<p class="title">' + (lan == "de" ? "Kein Job empfangen." : "No job received.") + '</p>');
     }    
 }
 
@@ -191,6 +205,18 @@ function getStatus(){
 }
 
 //--------START---------
+websocket.on("closed", function(){
+    msgBar.error("Websocketverbindung verloren. Neu verbinden...");
+});
+
+websocket.on("opened", function(){
+    msgBar.clear("error");
+    msgBar.info("Websocketverbindung hergestellt.", 2000);
+    getJobInfos(); //inital check, if a job was already received on page load
+    workspaces.load(); //load workspaces
+    getStatus();
+});
+
 myDataTable_workspaces = new MyDataTable(
     $('#workspaces'), //parent wrapper element
     [
@@ -242,7 +268,6 @@ myDataTable_workspaces = new MyDataTable(
             align : "right",
             initWidth : "25%",
             setContent : function(td, dataEntry){
-                console.log(dataEntry);
                 switch(dataEntry.status){
                     case "failed": case "not sent": case "error":
                         var span = $('<span class="clickable failed">' + dataEntry.status + '</span>');

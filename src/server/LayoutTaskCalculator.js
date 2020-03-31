@@ -135,7 +135,11 @@ var LayoutTaskCalculator = function(axiosSPOIn){
         })
         .catch(err=> {
             console.log("Layout Task " + layoutTaskId + " could not be canceled.");
-        })        
+        })
+        .finally(()=>{
+            canceled = true;
+            events.oncanceled(workspaceId, "canceled", layoutTaskId);
+        })
     }
 
     this.getError = function(workspaceId, layoutTaskId){

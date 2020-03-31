@@ -17,7 +17,12 @@ function initNavigation(el){
     //insert the right url in language changer to stay on same side when changing language
     //$('.header-menu-language-changer a').attr("href", '/' + lan + '/' + target);
 
-    
+    //get version of flow
+    $.get('/version').done(data => {
+        $('.header-title-text > span').html(data.versionNumber);
+        $('.header-title-text > span').attr("title", "pib-flow version");
+    })
+
     //set calculation URL
     $.get('/config')
     .done(config => {
