@@ -242,7 +242,7 @@ app.post('/job/:name', (req, res) => {
     data = req.body;
     job.set(jobname, data);
     sendWebsocketMsg("jobReceived");
-    return res.status(200).send("success");
+    res.status(200).send("success");
 });
 
 app.get('/config', (req,res) => {
