@@ -9,6 +9,7 @@ const axios = require('axios');
 const bodyParser = require('body-parser');
 const bodyParserError = require('bodyparser-json-error');
 const version = require('./server/version');
+const urljoin = require('url-join');
 const PORT = process.env.PORT || 4201;
 
 app.use(bodyParser.json()); // for parsing application/json
@@ -109,7 +110,7 @@ function sendWebsocketMsg(code){
 
 function sendToPIBFlow(jobName, layoutTaskId, workspaceId){
     //msg to PIB Flow
-    axios.post(process.env.FLOW_LOCATION + "/controller/layouttask/" + jobName + "/" + layoutTaskId + "/" + workspaceId)
+    axios.post(urljoin(process.env.FLOW_LOCATION , "/controller/layouttask/" , jobName , layoutTaskId, workspaceId))
     .then(res=> {
         workspaces.setStatus(workspaceId, "sent");
         sendWebsocketMsg("layoutTaskStatusUpdate");
@@ -187,12 +188,14 @@ function calculate(index){
 
 function checkPIBFLowConnection(){
     //msg to PIB Flow
-    axios.get(process.env.FLOW_LOCATION + "/version")
+    var url = urljoin(process.env.FLOW_LOCATION , "/version");
+    axios.get(url)
     .then(res=> {
         sendWebsocketMsg("PIBconnection");
     })
     .catch(err=>{
         sendWebsocketMsg("noPIBconnection");
+        console.log("PIB Flow could not be reached: " + url);
     });
 }
 
