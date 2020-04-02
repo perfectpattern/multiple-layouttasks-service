@@ -18,5 +18,5 @@ COPY --chown=pptruser:pptruser ["package.json","./"]
 COPY --chown=pptruser:pptruser ["src","./src"]
 
 RUN npm install
-EXPOSE 4203
+EXPOSE 4201
 ENTRYPOINT npm start
