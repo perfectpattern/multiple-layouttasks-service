@@ -8,6 +8,7 @@ const expressWs = require('express-ws')(app);
 const axios = require('axios');
 const bodyParser = require('body-parser');
 const bodyParserError = require('bodyparser-json-error');
+
 const version = require('./server/version');
 const urljoin = require('url-join');
 const PORT = process.env.PORT || 4201;
@@ -15,6 +16,7 @@ const PORT = process.env.PORT || 4201;
 app.use(bodyParser.json()); // for parsing application/json
 app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 app.use(bodyParserError.beautify({ status: 500, res: { msg: 'You sent a bad JSON !' } }));// Beautify body parser json syntax error
+app.use(bodyParser.json({limit: '10000kb'}));
 
 const baseUrl = 'https://' + process.env.SPO_URL + '/';
 const timeout = 5000;
@@ -242,6 +244,7 @@ app.ws('/', function(ws, req) {
 //POST a json
 app.post('/job/:name', (req, res) => {
     jobname = req.params.name;
+    console.log(jobname);
     data = req.body;
     job.set(jobname, data);
     sendWebsocketMsg("jobReceived");
